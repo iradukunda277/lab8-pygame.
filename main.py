@@ -229,12 +229,6 @@ def draw_square(screen: pygame.Surface, square: Square) -> None:
         (0, 0, square.size, square.size),
     )
 
-    # Draw a marker inside the square so the rotation is easy to see.
-    center = (square.size // 2, square.size // 2)
-    line_end = (square.size // 2, max(6, square.size // 6))
-    pygame.draw.line(base_square, (20, 20, 20), center, line_end, 4)
-    pygame.draw.circle(base_square, (245, 245, 245), center, max(3, square.size // 10))
-
     rotated_square = pygame.transform.rotate(base_square, square.angle)
     rotated_rect = rotated_square.get_rect(
         center=(square.x + square.size / 2, square.y + square.size / 2)
