@@ -10,7 +10,7 @@ WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 800
 FPS = 60
 
-SQUARE_COUNT = 100
+SQUARE_COUNT = 20
 MIN_SIZE = 16
 MAX_SIZE = 64
 MIN_SPEED = 0.8
@@ -19,6 +19,8 @@ MIN_ROTATION_SPEED = 0.5
 MAX_ROTATION_SPEED = 4.0
 DIRECTION_JITTER_CHANCE_PER_SECOND = 1.0
 MAX_DIRECTION_JITTER_DEGREES = 6.0
+FLEE_DISTANCE = 220.0
+FLEE_BLEND_PER_SECOND = 3.0
 
 BACKGROUND_COLOR = (0, 0, 0)
 MIN_GLOBAL_SPEED = 0.25
@@ -93,6 +95,11 @@ def clamp_velocity_to_max_speed(square: Square) -> None:
     scale = square.max_speed / speed
     square.vx *= scale
     square.vy *= scale
+
+
+def get_square_center(square: Square) -> tuple[float, float]:
+    """Return the center point of a square."""
+    return square.x + square.size / 2, square.y + square.size / 2
 
 
 def create_random_square(rng: random.Random) -> Square:
@@ -187,9 +194,60 @@ def apply_random_direction_jitter(
     clamp_velocity_to_max_speed(square)
 
 
-def update_square(square: Square, global_speed: float, dt_seconds: float, rng: random.Random) -> None:
-    """Move one square, add jitter, bounce it off walls, and rotate it."""
+def apply_flee_behavior(square: Square, all_squares: list[Square], dt_seconds: float) -> None:
+    """Steer smaller squares away from bigger nearby squares without removing randomness."""
+    flee_x = 0.0
+    flee_y = 0.0
+    square_center_x, square_center_y = get_square_center(square)
+
+    for other in all_squares:
+        if other is square or other.size <= square.size:
+            continue
+
+        other_center_x, other_center_y = get_square_center(other)
+        dx = square_center_x - other_center_x
+        dy = square_center_y - other_center_y
+        distance = math.hypot(dx, dy)
+
+        if distance > FLEE_DISTANCE:
+            continue
+        if distance == 0:
+            dx = 1.0
+            dy = 0.0
+            distance = 1.0
+
+        distance_weight = (FLEE_DISTANCE - distance) / FLEE_DISTANCE
+        size_weight = (other.size - square.size) / max(1, MAX_SIZE - MIN_SIZE)
+        influence = distance_weight * max(0.25, size_weight)
+
+        flee_x += (dx / distance) * influence
+        flee_y += (dy / distance) * influence
+
+    flee_length = math.hypot(flee_x, flee_y)
+    if flee_length == 0:
+        return
+
+    desired_vx = (flee_x / flee_length) * square.max_speed
+    desired_vy = (flee_y / flee_length) * square.max_speed
+
+    # We blend toward the flee direction instead of snapping to it instantly.
+    # That keeps the existing jitter/randomness visible in the motion.
+    blend = min(1.0, FLEE_BLEND_PER_SECOND * dt_seconds)
+    square.vx += (desired_vx - square.vx) * blend
+    square.vy += (desired_vy - square.vy) * blend
+    clamp_velocity_to_max_speed(square)
+
+
+def update_square(
+    square: Square,
+    all_squares: list[Square],
+    global_speed: float,
+    dt_seconds: float,
+    rng: random.Random,
+) -> None:
+    """Move one square, add jitter, apply flee behavior, bounce it off walls, and rotate it."""
     apply_random_direction_jitter(square, dt_seconds, rng)
+    apply_flee_behavior(square, all_squares, dt_seconds)
 
     frame_scale = dt_seconds * FPS
     square.x += square.vx * global_speed * frame_scale
@@ -217,7 +275,7 @@ def update_game_state(state: GameState, dt_seconds: float) -> None:
         return
 
     for square in state.squares:
-        update_square(square, state.global_speed, dt_seconds, state.rng)
+        update_square(square, state.squares, state.global_speed, dt_seconds, state.rng)
 
 
 def draw_square(screen: pygame.Surface, square: Square) -> None:

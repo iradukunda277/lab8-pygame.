@@ -2,12 +2,13 @@
 
 ## What this project does
 
-This project shows 100 colorful squares moving around a black window. Each
+This project shows 20 colorful squares moving around a black window. Each
 square has its own size, color, movement speed, direction, rotation speed, and
 size-based maximum speed. Bigger squares move more slowly than smaller ones.
 
 The app also applies a small random direction jitter over time, so the movement
-feels more alive instead of perfectly straight forever.
+feels more alive instead of perfectly straight forever. In Part B, smaller
+squares also try to flee away from bigger nearby squares.
 
 ## Installation
 
@@ -40,11 +41,11 @@ pytest
 
 ## Features
 
-- 100 moving squares
+- 20 moving squares
 - Random sizes and colors
 - Rotation for every square
-- Inner marker to make the rotation easier to see
 - Size-based max speed
 - Random direction jitter
+- Flee behavior for smaller squares
 - Bounce behavior on window edges
 - Pause, reset, and speed controls

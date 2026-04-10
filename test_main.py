@@ -15,7 +15,7 @@ class ForcedJitterRandom:
 def test_create_default_state_builds_expected_number_of_squares() -> None:
     state = main.create_default_state(seed=7)
     assert len(state.squares) == main.SQUARE_COUNT
-    assert main.SQUARE_COUNT == 100
+    assert main.SQUARE_COUNT == 20
 
 
 def test_compute_square_max_speed_makes_bigger_squares_slower() -> None:
@@ -80,10 +80,46 @@ def test_update_square_bounces_when_it_hits_a_wall() -> None:
         max_speed=3.0,
     )
 
-    main.update_square(square, global_speed=1.0, dt_seconds=1 / main.FPS, rng=ForcedJitterRandom())
+    main.update_square(
+        square,
+        [square],
+        global_speed=1.0,
+        dt_seconds=1 / main.FPS,
+        rng=ForcedJitterRandom(),
+    )
 
     assert square.x == 0
     assert square.vx > 0
+
+
+def test_apply_flee_behavior_turns_small_square_away_from_bigger_one() -> None:
+    small_square = main.Square(
+        x=100,
+        y=100,
+        size=20,
+        color=(255, 0, 0),
+        vx=1.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+    )
+    big_square = main.Square(
+        x=140,
+        y=100,
+        size=60,
+        color=(0, 255, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=1.0,
+    )
+
+    main.apply_flee_behavior(small_square, [small_square, big_square], dt_seconds=1.0)
+
+    assert small_square.vx < 0
+    assert math.hypot(small_square.vx, small_square.vy) <= small_square.max_speed
 
 
 def test_handle_input_can_pause_animation() -> None:
