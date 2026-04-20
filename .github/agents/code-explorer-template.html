@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Explorer - lab8-pygame</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #1e1e2e;
+  --surface: #2a2a3e;
+  --surface2: #313148;
+  --text: #cdd6f4;
+  --muted: #a6adc8;
+  --accent: #89b4fa;
+  --green: #a6e3a1;
+  --yellow: #f9e2af;
+  --red: #f38ba8;
+  --mono: 'Courier New', Courier, monospace;
+  --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+a { color: var(--accent); }
+a:hover { text-decoration: underline; }
+
+header { padding: 1.5rem 2rem; border-bottom: 1px solid #3a3a55; background: var(--surface); }
+header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: -0.3px; }
+header p { color: var(--muted); font-size: 0.88rem; margin-top: 0.2rem; }
+header .file-badge { display: inline-block; background: var(--surface2); border-radius: 4px; padding: 0.1rem 0.5rem; font-family: var(--mono); font-size: 0.8rem; color: var(--yellow); margin-top: 0.3rem; }
+
+/* Tab navigation */
+.tab-nav { display: flex; padding: 0 2rem; background: var(--surface); border-bottom: 1px solid #3a3a55; flex-wrap: wrap; gap: 0; }
+.tab-btn { padding: 0.75rem 1.2rem; cursor: pointer; border: none; background: none; color: var(--muted); font-size: 0.88rem; border-bottom: 2px solid transparent; transition: all 0.18s; white-space: nowrap; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* Tab panels */
+.tab-panel { display: none; padding: 2rem; max-width: 1280px; margin: 0 auto; }
+.tab-panel.active { display: block; }
+
+/* Cards */
+.card { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #3a3a55; }
+.card h3 { color: var(--accent); margin-bottom: 0.6rem; font-size: 1rem; }
+
+/* Two-column */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+/* Architecture sub-tabs */
+.arch-subnav { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.arch-btn { padding: 0.35rem 0.85rem; border-radius: 20px; border: 1px solid #444; background: none; color: var(--muted); cursor: pointer; font-size: 0.82rem; transition: all 0.18s; }
+.arch-btn:hover { border-color: var(--accent); color: var(--text); }
+.arch-btn.active { background: var(--accent); color: #1e1e2e; border-color: var(--accent); font-weight: 600; }
+.arch-panel { display: none; }
+.arch-panel.active { display: block; }
+
+.diag-container { background: var(--surface2); border-radius: var(--radius); padding: 1.5rem; min-height: 280px; overflow-x: auto; display: flex; justify-content: center; align-items: flex-start; }
+.diag-container svg { max-width: 100%; height: auto; }
+.diag-title { color: var(--accent); font-size: 1.05rem; font-weight: 600; margin-bottom: 0.75rem; }
+.diag-caption { color: var(--muted); font-size: 0.82rem; margin-top: 0.75rem; font-style: italic; border-left: 2px solid #444; padding-left: 0.6rem; }
+
+/* Patterns */
+.pattern-card { background: var(--surface2); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #3a3a55; }
+.pattern-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.pattern-icon { font-size: 1.1rem; }
+.pattern-title { font-weight: 600; color: var(--text); font-size: 0.95rem; }
+.pattern-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.75rem; }
+.pattern-layers { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.6rem; }
+.layer { font-size: 0.8rem; padding: 0.28rem 0.6rem; border-radius: 4px; line-height: 1.4; }
+.layer-basics   { background: #1e3a2a; color: #a6e3a1; }
+.layer-eng      { background: #3a2e1a; color: #f9e2af; }
+.layer-arch     { background: #1a2a3e; color: #89b4fa; }
+.layer-label    { font-weight: 700; margin-right: 0.35rem; }
+.ext-link       { display: inline-block; font-size: 0.8rem; color: var(--accent); text-decoration: none; margin-top: 0.2rem; }
+.ext-link:hover { text-decoration: underline; }
+.fix-hint       { background: #1e1e2e; border-left: 3px solid var(--yellow); padding: 0.4rem 0.7rem; border-radius: 0 4px 4px 0; font-size: 0.8rem; color: var(--text); margin-top: 0.5rem; }
+code { font-family: var(--mono); font-size: 0.85em; background: #12121e; padding: 0.05em 0.3em; border-radius: 3px; color: var(--yellow); }
+
+/* Badges */
+.badge { display: inline-block; padding: 0.18rem 0.55rem; border-radius: 12px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3px; }
+.badge-high   { background: #4a1a2a; color: var(--red); }
+.badge-medium { background: #3e2e10; color: var(--yellow); }
+.badge-low    { background: #1a3220; color: var(--green); }
+.badge-score  { background: var(--surface2); color: var(--accent); font-size: 1rem; font-weight: 700; padding: 0.3rem 0.8rem; border: 1px solid var(--accent); border-radius: var(--radius); }
+
+/* Type Hints */
+.type-banner { display: flex; align-items: center; gap: 1.2rem; padding: 1.1rem 1.5rem; background: var(--surface2); border-radius: var(--radius); margin-bottom: 1.5rem; border: 1px solid #3a3a55; }
+.score-big { font-size: 2.2rem; font-weight: 800; color: var(--accent); line-height: 1; }
+.score-verdict { color: var(--muted); font-size: 0.88rem; }
+
+/* Code Review */
+.review-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; }
+@media (max-width: 800px) { .review-layout { grid-template-columns: 1fr; } }
+.review-left { background: var(--surface); border-radius: var(--radius); padding: 1.1rem; border: 1px solid #3a3a55; }
+.review-right { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; border: 1px solid #3a3a55; min-height: 320px; }
+.review-item { padding: 0.7rem 0.8rem; border-radius: 6px; cursor: pointer; margin-bottom: 0.5rem; border: 1px solid transparent; transition: all 0.15s; }
+.review-item:hover { border-color: #444; background: var(--surface2); }
+.review-item.selected { border-color: var(--accent); background: var(--surface2); }
+.ri-titlerow { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.ri-title { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+.ri-note { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+pre.snippet { background: #12121e; border-radius: 5px; padding: 0.7rem; font-size: 0.76rem; overflow-x: auto; color: #cdd6f4; font-family: var(--mono); margin: 0.6rem 0; line-height: 1.5; border: 1px solid #2a2a3e; }
+.detail-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; }
+.detail-title { color: var(--accent); font-size: 1rem; font-weight: 700; }
+.detail-body { color: var(--muted); font-size: 0.86rem; line-height: 1.65; margin-bottom: 0.9rem; }
+.hint-box { background: var(--surface2); border-left: 3px solid var(--accent); padding: 0.6rem 0.8rem; border-radius: 0 4px 4px 0; font-size: 0.84rem; color: var(--text); }
+
+/* Performance */
+.perf-card { background: var(--surface2); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #3a3a55; }
+.perf-title { font-weight: 600; color: var(--text); margin-bottom: 0.4rem; }
+.perf-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+/* Next Steps */
+.ns-item { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.2rem; background: var(--surface2); border-radius: var(--radius); margin-bottom: 0.8rem; border: 1px solid #3a3a55; }
+.ns-num { font-size: 1.4rem; font-weight: 800; color: var(--accent); min-width: 2rem; line-height: 1.2; }
+.ns-text a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+.ns-text a:hover { text-decoration: underline; }
+.ns-desc { color: var(--muted); font-size: 0.83rem; margin-top: 0.2rem; }
+
+/* Fallback */
+.fallback { background: #2a1215; color: var(--red); padding: 1rem; border-radius: 6px; font-size: 0.72rem; font-family: var(--mono); overflow-x: auto; white-space: pre-wrap; }
+
+/* Section headings */
+.section-head { font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.section-head.green { color: var(--green); }
+.section-head.yellow { color: var(--yellow); }
+.section-head.red { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Code Explorer</h1>
+  <span class="file-badge">main.py + test_main.py</span>
+  <p style="margin-top:0.4rem;">Project: lab8-pygame | Focus: moving squares Part B | Files analyzed: main.py, test_main.py, README.md</p>
+</header>
+
+<nav class="tab-nav">
+<button class="tab-btn active" onclick="switchTab('architecture', this)">Architecture</button>
+<button class="tab-btn" onclick="switchTab('patterns', this)">Patterns</button>
+<button class="tab-btn" onclick="switchTab('typehints', this)">Type Hints</button>
+<button class="tab-btn" onclick="switchTab('codereview', this)">Code Review</button>
+<button class="tab-btn" onclick="switchTab('performance', this)">Performance</button>
+<button class="tab-btn" onclick="switchTab('nextsteps', this)">Next Steps</button>
+</nav>
+
+<div class="tab-panel active" id="tab-architecture">
+  <div class="card">
+    <h3>Project Snapshot</h3>
+    <p>This explorer maps the full runtime loop of the Lab 8 moving squares project. The animation is driven by <code>main()</code>, which polls input, updates square motion, and redraws the screen. The most important state lives in the <code>Square</code> and <code>GameState</code> dataclasses.</p>
+    <p style="margin-top:0.8rem;">Chosen data flows: <code>square.vx / square.vy</code> (score 4), <code>dt_seconds</code> (score 4), and <code>state.global_speed</code> (score 3). These variables are central because they are created, transformed, and then used to change visible motion on screen.</p>
+  </div>
+
+  <div class="arch-subnav">
+    <button class="arch-btn active" onclick="switchArch('callgraph', this)">Call Graph</button>
+    <button class="arch-btn" onclick="switchArch('dependencies', this)">Dependencies</button>
+    <button class="arch-btn" onclick="switchArch('fullsequence', this)">Full Sequence</button>
+    <button class="arch-btn" onclick="switchArch('updatesequence', this)">Update Sequence</button>
+    <button class="arch-btn" onclick="switchArch('fleesequence', this)">Flee Sequence</button>
+    <button class="arch-btn" onclick="switchArch('velocityflow', this)">Velocity Flow</button>
+    <button class="arch-btn" onclick="switchArch('timeflow', this)">Time Flow</button>
+    <button class="arch-btn" onclick="switchArch('speedflow', this)">Speed Flow</button>
+  </div>
+
+  <div class="arch-panel active" id="arch-callgraph">
+    <div class="diag-title">Call Graph</div>
+    <div class="diag-container" id="diag-callgraph"></div>
+    <div class="diag-caption">This is the bird's-eye view: input, update, and drawing stay separate, which makes the program easier to read and test.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-dependencies">
+    <div class="diag-title">Dependency Graph</div>
+    <div class="diag-container" id="diag-dependencies"></div>
+    <div class="diag-caption">The project depends mostly on standard library modules plus Pygame, while tests depend directly on the game logic in <code>main.py</code>.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-fullsequence">
+    <div class="diag-title">Full Frame Sequence</div>
+    <div class="diag-container" id="diag-fullsequence"></div>
+    <div class="diag-caption">Every frame follows the same pattern: read events, update state with time, draw the latest state, and flip the frame to the screen.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-updatesequence">
+    <div class="diag-title">Square Update Sequence</div>
+    <div class="diag-container" id="diag-updatesequence"></div>
+    <div class="diag-caption">A single square first gets random jitter, then flee steering, then movement, rotation, and finally wall-bounce correction.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-fleesequence">
+    <div class="diag-title">Flee Behavior Sequence</div>
+    <div class="diag-container" id="diag-fleesequence"></div>
+    <div class="diag-caption">Smaller squares scan nearby bigger squares, build one escape direction, blend toward it, and clamp the final speed.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-velocityflow">
+    <div class="diag-title">Velocity Data Flow</div>
+    <div class="diag-container" id="diag-velocityflow"></div>
+    <div class="diag-caption">The velocity vector is created once, then nudged by jitter and flee logic before it drives visible movement each frame.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-timeflow">
+    <div class="diag-title">Delta Time Data Flow</div>
+    <div class="diag-container" id="diag-timeflow"></div>
+    <div class="diag-caption"><code>dt_seconds</code> starts at the clock and then affects randomness, movement, and rotation so animation stays time-based.</div>
+  </div>
+
+  <div class="arch-panel" id="arch-speedflow">
+    <div class="diag-title">Global Speed Data Flow</div>
+    <div class="diag-container" id="diag-speedflow"></div>
+    <div class="diag-caption">Keyboard input can change the shared global speed, which then scales both translation and rotation for every square.</div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-patterns">
+  <div class="two-col">
+    <div>
+      <div class="section-head green">Good Patterns</div>
+
+      <div class="pattern-card">
+        <div class="pattern-header">
+          <span class="pattern-icon">✅</span>
+          <span class="pattern-title">Small focused functions</span>
+        </div>
+        <div class="pattern-desc">Functions such as <code>handle_input()</code>, <code>update_game_state()</code>, and <code>draw_scene()</code> each do one clear job.</div>
+        <div class="pattern-layers">
+          <div class="layer layer-basics"><span class="layer-label">Basics</span>You can learn the game loop one step at a time.</div>
+          <div class="layer layer-eng"><span class="layer-label">Engineering</span>Focused functions are easier to test and easier to change safely.</div>
+          <div class="layer layer-arch"><span class="layer-label">Architecture</span>This keeps input, simulation, and rendering loosely separated.</div>
+        </div>
+        <a class="ext-link" href="https://refactoring.guru/smells/long-method" target="_blank" rel="noreferrer">Read about keeping methods small</a>
+      </div>
+
+      <div class="pattern-card">
+        <div class="pattern-header">
+          <span class="pattern-icon">✅</span>
+          <span class="pattern-title">Typed state models</span>
+        </div>
+        <div class="pattern-desc">The <code>Square</code> and <code>GameState</code> dataclasses make the moving pieces of the program explicit.</div>
+        <div class="pattern-layers">
+          <div class="layer layer-basics"><span class="layer-label">Basics</span>It is easier to see what data each square needs.</div>
+          <div class="layer layer-eng"><span class="layer-label">Engineering</span>Dataclasses reduce boilerplate and make test setup cleaner.</div>
+          <div class="layer layer-arch"><span class="layer-label">Architecture</span>State is modeled as data, not hidden inside unrelated functions.</div>
+        </div>
+        <a class="ext-link" href="https://docs.python.org/3/library/dataclasses.html" target="_blank" rel="noreferrer">Read the Python dataclasses docs</a>
+      </div>
+
+      <div class="pattern-card">
+        <div class="pattern-header">
+          <span class="pattern-icon">✅</span>
+          <span class="pattern-title">Named tuning constants</span>
+        </div>
+        <div class="pattern-desc">Movement ranges, flee distance, jitter size, and frame limits live in named constants at the top of the file.</div>
+        <div class="pattern-layers">
+          <div class="layer layer-basics"><span class="layer-label">Basics</span>You can tune gameplay without hunting through every function.</div>
+          <div class="layer layer-eng"><span class="layer-label">Engineering</span>Clear constants reduce magic numbers and improve readability.</div>
+          <div class="layer layer-arch"><span class="layer-label">Architecture</span>Game rules are centralized, which supports later balancing work.</div>
+        </div>
+        <a class="ext-link" href="https://refactoring.guru/replace-magic-number-with-symbolic-constant" target="_blank" rel="noreferrer">Read about symbolic constants</a>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-head yellow">Potential Issues</div>
+
+      <div class="pattern-card">
+        <div class="pattern-header">
+          <span class="pattern-icon">⚠️</span>
+          <span class="pattern-title">Render work repeats</span>
+        </div>
+        <div class="pattern-desc"><code>draw_square()</code> creates a fresh surface and rotates it every frame for every square.</div>
+        <div class="pattern-layers">
+          <div class="layer layer-basics"><span class="layer-label">Basics</span>The picture is redrawn correctly, but extra work happens each tick.</div>
+          <div class="layer layer-eng"><span class="layer-label">Engineering</span>Repeated allocation and rotation will become a hotspot as square count grows.</div>
+          <div class="layer layer-arch"><span class="layer-label">Architecture</span>A render cache would separate visual assets from simulation rules.</div>
+        </div>
+        <div class="fix-hint">Cache base square surfaces by size and color if you decide to scale the project up.</div>
+      </div>
+
+      <div class="pattern-card">
+        <div class="pattern-header">
+          <span class="pattern-icon">⚠️</span>
+          <span class="pattern-title">One file owns all layers</span>
+        </div>
+        <div class="pattern-desc"><code>main.py</code> currently holds constants, data models, input, simulation, rendering, and program startup.</div>
+        <div class="pattern-layers">
+          <div class="layer layer-basics"><span class="layer-label">Basics</span>This is fine for a lab, but it gets harder to navigate as features grow.</div>
+          <div class="layer layer-eng"><span class="layer-label">Engineering</span>Large single files make merge conflicts and targeted testing more likely.</div>
+          <div class="layer layer-arch"><span class="layer-label">Architecture</span>Splitting into modules would make the project easier to extend later.</div>
+        </div>
+        <div class="fix-hint">A natural next split is <code>models.py</code>, <code>logic.py</code>, and <code>rendering.py</code>.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-typehints">
+  <div class="type-banner">
+    <div class="score-big">5/5</div>
+    <div class="score-verdict">
+      <strong>Strong type hint coverage.</strong><br>
+      Parameters, returns, dataclass fields, and concrete containers are all used consistently in the main game logic.
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>Strengths</h3>
+      <p>The project uses explicit field types in both dataclasses, which makes the moving state easy to inspect and explain.</p>
+      <p style="margin-top:0.8rem;">Function signatures also use concrete generics such as <code>list[Square]</code> and <code>tuple[int, int, int]</code>, so the shape of data stays visible from call to call.</p>
+    </div>
+
+    <div class="card">
+      <h3>Gaps To Improve</h3>
+      <p>A small type alias like <code>Color = tuple[int, int, int]</code> would make repeated RGB tuples easier to read.</p>
+      <p style="margin-top:0.8rem;">The random provider is effectively duck-typed in tests, so a tiny <code>Protocol</code> could document the <code>random()</code> and <code>uniform()</code> methods that jitter needs.</p>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-codereview">
+  <div class="review-layout">
+    <div class="review-left">
+      <div class="review-item selected" id="ri-0" onclick="selectReview(0)">
+        <div class="ri-titlerow">
+          <div class="ri-title">Overlap fallback biases flee direction</div>
+          <span class="badge badge-medium">medium</span>
+        </div>
+        <div class="ri-note">Perfect overlap always pushes the square to the right for one step.</div>
+      </div>
+
+      <div class="review-item" id="ri-1" onclick="selectReview(1)">
+        <div class="ri-titlerow">
+          <div class="ri-title">Per-frame surface allocation</div>
+          <span class="badge badge-medium">medium</span>
+        </div>
+        <div class="ri-note">Drawing creates and rotates a new surface for every square every frame.</div>
+      </div>
+
+      <div class="review-item" id="ri-2" onclick="selectReview(2)">
+        <div class="ri-titlerow">
+          <div class="ri-title">Quadratic flee scan</div>
+          <span class="badge badge-medium">medium</span>
+        </div>
+        <div class="ri-note">Each square scans all other squares during flee behavior.</div>
+      </div>
+
+      <div class="review-item" id="ri-3" onclick="selectReview(3)">
+        <div class="ri-titlerow">
+          <div class="ri-title">Mixed time units</div>
+          <span class="badge badge-low">low</span>
+        </div>
+        <div class="ri-note">Movement values act like frame units, then are scaled back with <code>FPS</code>.</div>
+      </div>
+
+      <div class="review-item" id="ri-4" onclick="selectReview(4)">
+        <div class="ri-titlerow">
+          <div class="ri-title">Single-file growth risk</div>
+          <span class="badge badge-low">low</span>
+        </div>
+        <div class="ri-note">The lab is understandable now, but new features will crowd <code>main.py</code>.</div>
+      </div>
+    </div>
+
+    <div class="review-right" id="review-detail-panel"></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-performance">
+  <div class="two-col">
+    <div>
+      <div class="section-head green">Wins</div>
+
+      <div class="perf-card">
+        <div class="perf-title">Time-based frame control</div>
+        <div class="perf-desc"><code>clock.tick(FPS)</code> caps the frame rate and also produces <code>dt_seconds</code>, so the animation is more stable across machines.</div>
+      </div>
+
+      <div class="perf-card">
+        <div class="perf-title">Speed limits stay bounded</div>
+        <div class="perf-desc"><code>clamp_velocity_to_max_speed()</code> protects each square from runaway values after jitter or flee blending.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-head red">Risks</div>
+
+      <div class="perf-card">
+        <div class="perf-title">Fresh surfaces per square</div>
+        <div class="perf-desc"><code>draw_square()</code> allocates a new alpha surface and rotates it every frame, which is the clearest future hotspot.</div>
+      </div>
+
+      <div class="perf-card">
+        <div class="perf-title">O n squared flee logic</div>
+        <div class="perf-desc"><code>apply_flee_behavior()</code> compares each square with every other square, which is fine for 20 objects but will not scale smoothly.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;">
+    <span class="badge-score">4 / 6</span>
+    <span style="margin-left:0.75rem; color: var(--muted);">Performance tab included because the project has clear runtime tradeoffs. Top finding: rendering creates new surfaces each frame.</span>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-nextsteps">
+  <div class="ns-item">
+    <div class="ns-num">1</div>
+    <div class="ns-text">
+      <a href="https://docs.python.org/3/library/dataclasses.html" target="_blank" rel="noreferrer">Study dataclasses</a>
+      <div class="ns-desc">This will help you explain why <code>Square</code> and <code>GameState</code> are easier to work with than loose dictionaries.</div>
+    </div>
+  </div>
+
+  <div class="ns-item">
+    <div class="ns-num">2</div>
+    <div class="ns-text">
+      <a href="https://www.pygame.org/docs/ref/transform.html" target="_blank" rel="noreferrer">Read Pygame transform docs</a>
+      <div class="ns-desc">Useful for understanding the cost of rotation and how <code>pygame.transform.rotate()</code> affects rendering.</div>
+    </div>
+  </div>
+
+  <div class="ns-item">
+    <div class="ns-num">3</div>
+    <div class="ns-text">
+      <a href="https://docs.python.org/3/library/math.html#math.hypot" target="_blank" rel="noreferrer">Review math.hypot</a>
+      <div class="ns-desc">This function appears several times and is the clean way to compute vector length for speed and distance.</div>
+    </div>
+  </div>
+
+  <div class="ns-item">
+    <div class="ns-num">4</div>
+    <div class="ns-text">
+      <a href="https://refactoring.guru/single-responsibility-principle" target="_blank" rel="noreferrer">Learn single responsibility</a>
+      <div class="ns-desc">A good next design lesson if you later split <code>main.py</code> into smaller modules.</div>
+    </div>
+  </div>
+
+  <div class="ns-item">
+    <div class="ns-num">5</div>
+    <div class="ns-text">
+      <a href="https://en.wikipedia.org/wiki/Steering_behavior" target="_blank" rel="noreferrer">Explore steering behavior</a>
+      <div class="ns-desc">The flee logic is a simple steering rule, so this gives you the bigger idea behind the Part B behavior.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Tab switching ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Architecture sub-tabs ──
+function switchArch(name, btn) {
+  document.querySelectorAll('.arch-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.arch-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('arch-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Code Review ──
+const reviewItems = [
+{
+  id: 0,
+  title: "Overlap fallback biases flee direction",
+  severity: "medium",
+  snippet: `if distance == 0:
+    dx = 1.0
+    dy = 0.0
+    distance = 1.0`,
+  shortNote: "Perfect overlap always pushes right.",
+  fullExplanation: `When two square centers overlap exactly, the code uses a fixed escape vector that points to the right. That keeps the math safe, but it also creates a small directional bias that students might notice during dense overlaps.`,
+  improvementHint: "Use a random unit vector or the square's previous velocity direction when distance is zero."
+},
+{
+  id: 1,
+  title: "Per-frame surface allocation",
+  severity: "medium",
+  snippet: `base_square = pygame.Surface((square.size, square.size), pygame.SRCALPHA)
+pygame.draw.rect(base_square, square.color, (0, 0, square.size, square.size))
+
+rotated_square = pygame.transform.rotate(base_square, square.angle)`,
+  shortNote: "Rendering allocates and rotates every frame.",
+  fullExplanation: `This code is fine for a small lab project, but it does two expensive jobs inside the hottest render path: it allocates a new surface and rotates it. That is the first place to optimize if the object count or visual complexity grows.`,
+  improvementHint: "Cache base square surfaces by size and color, then reuse them during drawing."
+},
+{
+  id: 2,
+  title: "Quadratic flee scan",
+  severity: "medium",
+  snippet: `for other in all_squares:
+    if other is square or other.size <= square.size:
+        continue`,
+  shortNote: "Each square checks every other square.",
+  fullExplanation: `The flee behavior loops through the full crowd for every square, so total work grows roughly with the square count times itself. That is acceptable at 20 squares, but it would get noticeably heavier if the scene returned to 100 or more objects.`,
+  improvementHint: "If you scale up again, consider a grid or spatial bucket so each square checks only nearby neighbors."
+},
+{
+  id: 3,
+  title: "Mixed time units",
+  severity: "low",
+  snippet: `frame_scale = dt_seconds * FPS
+square.x += square.vx * global_speed * frame_scale
+square.angle = (square.angle + square.rotation_speed * global_speed * frame_scale) % 360`,
+  shortNote: "The code mixes frame-style and time-style units.",
+  fullExplanation: `The current math works because the project normalizes by FPS, but it asks readers to think in both frame units and seconds at the same time. Pure units per second would be easier to explain and easier to tune later.`,
+  improvementHint: "Store velocities and rotation in units per second so dt_seconds can be applied directly without multiplying by FPS."
+},
+{
+  id: 4,
+  title: "Single-file growth risk",
+  severity: "low",
+  snippet: `def update_game_state(state: GameState, dt_seconds: float) -> None:
+    if state.paused:
+        return
+
+    for square in state.squares:
+        update_square(square, state.squares, state.global_speed, dt_seconds, state.rng)
+
+def draw_scene(screen: pygame.Surface, state: GameState) -> None:
+    screen.fill(BACKGROUND_COLOR)`,
+  shortNote: "One file holds all major layers.",
+  fullExplanation: `For a lab, keeping everything in one file is easy to follow. The risk appears when new features arrive, because input rules, rendering rules, tests, and data models all evolve in the same place.`,
+  improvementHint: "Split the project by responsibility once the lab adds more behavior, such as models, logic, and rendering modules."
+}
+];
+
+function escH(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function selectReview(id) {
+  document.querySelectorAll('.review-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('ri-' + id).classList.add('selected');
+  const item = reviewItems[id];
+  const sevClass = 'badge-' + item.severity;
+  const body = item.fullExplanation.replace(/\n/g, '<br>');
+  document.getElementById('review-detail-panel').innerHTML = `
+    <div>
+      <div class="detail-head">
+        <span class="detail-title">${escH(item.title)}</span>
+        <span class="badge ${escH(sevClass)}">${escH(item.severity)}</span>
+      </div>
+      <div class="detail-body">${body}</div>
+      <pre class="snippet">${escH(item.snippet)}</pre>
+      <div class="hint-box">&#128161; <strong>Improvement:</strong> ${escH(item.improvementHint)}</div>
+    </div>`;
+}
+
+// ── Mermaid ──
+mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+
+const diagrams = {
+callgraph: String.raw`graph TD
+  n1[main loop] --> n2[poll events]
+  n2 --> n3[handle input]
+  n1 --> n4[delta step]
+  n4 --> n5[update state]
+  n5 --> n6[update square]
+  n6 --> n7[jitter step]
+  n6 --> n8[flee step]
+  n6 --> n9[move rotate]
+  n9 --> n10[wall bounce]
+  n1 --> n11[draw scene]
+  n11 --> n12[draw square]
+  n1 --> n13[flip frame]`,
+dependencies: String.raw`graph LR
+  n1[main file] --> n2[pygame module]
+  n1 --> n3[math module]
+  n1 --> n4[random module]
+  n1 --> n5[dataclass tools]
+  n6[test file] --> n1
+  n7[readme file] --> n1
+  click n2 href "https://www.pygame.org/docs/" "Open docs"
+  click n3 href "https://docs.python.org/3/library/math.html" "Open docs"
+  click n4 href "https://docs.python.org/3/library/random.html" "Open docs"
+  click n5 href "https://docs.python.org/3/library/dataclasses.html" "Open docs"`,
+fullsequence: String.raw`sequenceDiagram
+  participant p1 as Main
+  participant p2 as Loop
+  participant p3 as Input
+  participant p4 as Update
+  participant p5 as Draw
+  participant p6 as Screen
+  p1->>p2: start loop
+  p2->>p3: poll events
+  p3-->>p2: state flags
+  p2->>p4: pass delta
+  p4-->>p2: new state
+  p2->>p5: draw frame
+  p5->>p6: blit squares
+  p6-->>p2: frame ready
+  p2->>p6: flip frame`,
+updatesequence: String.raw`sequenceDiagram
+  participant p1 as Update
+  participant p2 as Square
+  participant p3 as Jitter
+  participant p4 as Flee
+  participant p5 as Motion
+  participant p6 as Walls
+  p1->>p2: pick square
+  p2->>p3: nudge vector
+  p3-->>p2: jittered speed
+  p2->>p4: scan threats
+  p4-->>p2: flee blend
+  p2->>p5: apply delta
+  p5-->>p2: new pose
+  p2->>p6: test bounds
+  p6-->>p2: bounce back`,
+fleesequence: String.raw`sequenceDiagram
+  participant p1 as Small
+  participant p2 as Crowd
+  participant p3 as Threat
+  participant p4 as Blend
+  participant p5 as Clamp
+  p1->>p2: scan crowd
+  p2->>p3: compare size
+  p3-->>p2: near threat
+  p2->>p4: build flee sum
+  p4-->>p1: target vector
+  p1->>p1: blend speed
+  p1->>p5: cap motion
+  p5-->>p1: safe move`,
+velocityflow: String.raw`graph TD
+  n1[random spawn] --> n2[start vx vy]
+  n2 --> n3[jitter turn]
+  n3 --> n4[flee blend]
+  n4 --> n5[speed clamp]
+  n5 --> n6[move square]
+  n6 --> n7[wall bounce]
+  n7 --> n8[next frame]`,
+timeflow: String.raw`graph TD
+  n1[clock tick] --> n2[delta time]
+  n2 --> n3[jitter chance]
+  n2 --> n4[frame scale]
+  n4 --> n5[move step]
+  n4 --> n6[rotate step]`,
+speedflow: String.raw`graph TD
+  n1[key input] --> n2[speed change]
+  n2 --> n3[global speed]
+  n3 --> n4[move step]
+  n3 --> n5[rotate step]`
+};
+
+let renderCounter = 0;
+
+async function renderDiagram(key, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const source = diagrams[key];
+  if (!source) { container.innerHTML = '<p style="color:var(--muted)">No diagram source found.</p>'; return; }
+  const uid = 'mmd-' + key + '-' + (++renderCounter);
+  try {
+    const { svg, bindFunctions } = await mermaid.render(uid, source);
+    container.innerHTML = svg;
+    if (typeof bindFunctions === 'function') bindFunctions(container);
+  } catch (err) {
+    container.innerHTML = '<pre class="fallback">Render failed: ' + err.message + '\n\nSource:\n' + source + '</pre>';
+  }
+}
+
+async function renderAll() {
+  for (const [key] of Object.entries(diagrams)) {
+    await renderDiagram(key, 'diag-' + key);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  selectReview(0);
+  renderAll();
+});
+</script>
+</body>
+</html>
