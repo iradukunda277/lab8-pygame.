@@ -24,6 +24,7 @@ MIN_SIZE = 10
 MAX_SIZE = 40
 MAX_SQUARE_SIZE = 80
 GROWTH_FACTOR = 0.25
+TRAILS_LENGTH = 30
 MAX_SPEED = 6.0
 MIN_SPEED = 1.5
 GLOBAL_MAX_SPEED = MAX_SPEED
@@ -56,6 +57,7 @@ class Square:
     life_span: float = 6.0
     age: float = 0.0
     original_size: int | None = None
+    trail: list[tuple[float, float]] = field(default_factory=list)
     rect: pygame.Rect = field(init=False)
 
     def __post_init__(self) -> None:
@@ -65,6 +67,15 @@ class Square:
 
     def update_rect(self) -> None:
         self.rect = pygame.Rect(int(self.x), int(self.y), self.size, self.size)
+
+    def remember_position(self) -> None:
+        self.trail.append((self.center_x(), self.center_y()))
+
+        if len(self.trail) > TRAILS_LENGTH:
+            self.trail.pop(0)
+
+    def reset_trail(self) -> None:
+        self.trail = []
 
     @property
     def dx(self) -> float:
@@ -202,6 +213,7 @@ def update_square(
     apply_random_direction_jitter(square, dt_seconds, rng)
     apply_flee_behavior(square, squares, dt_seconds)
     clamp_velocity_to_max_speed(square)
+    wrapped = False
 
     square.x += square.vx * global_speed * dt_seconds * FPS
     square.y += square.vy * global_speed * dt_seconds * FPS
@@ -211,15 +223,24 @@ def update_square(
 
     if square.x + square.size >= WIDTH:
         square.x = 0
+        wrapped = True
     elif square.x <= 0:
         square.x = WIDTH - square.size
+        wrapped = True
 
     if square.y + square.size >= HEIGHT:
         square.y = 0
+        wrapped = True
     elif square.y <= 0:
         square.y = HEIGHT - square.size
+        wrapped = True
 
     square.update_rect()
+
+    if wrapped:
+        square.reset_trail()
+    else:
+        square.remember_position()
 
 
 def check_collision(first_square: Square, second_square: Square) -> bool:
@@ -336,6 +357,16 @@ def draw_square(screen: pygame.Surface, square: Square) -> None:
     screen.blit(rotated_square, rotated_rect)
 
 
+def draw_trail(screen: pygame.Surface, square: Square) -> None:
+    if len(square.trail) < 2:
+        return
+
+    for index in range(len(square.trail) - 1):
+        start_position = square.trail[index]
+        end_position = square.trail[index + 1]
+        pygame.draw.line(screen, square.color, start_position, end_position, 1)
+
+
 def draw_scene(
     screen: pygame.Surface,
     font: pygame.font.Font,
@@ -345,6 +376,7 @@ def draw_scene(
     screen.fill(BACKGROUND_COLOR)
 
     for square in state.squares:
+        draw_trail(screen, square)
         draw_square(screen, square)
 
     status = "Paused" if state.paused else f"FPS: {int(clock.get_fps())}"

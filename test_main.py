@@ -245,6 +245,7 @@ def test_update_square_wraps_at_edges_without_changing_velocity() -> None:
             rotation_speed=1.0,
             max_speed=10.0,
         )
+        square.trail = [(10, 10), (20, 20)]
 
         main.update_square(
             square,
@@ -260,6 +261,34 @@ def test_update_square_wraps_at_edges_without_changing_velocity() -> None:
         assert math.isclose(square.vy, vy, abs_tol=1e-6)
         assert square.rect.topleft == (int(expected_x), int(expected_y))
         assert square.rect.size == (square.size, square.size)
+        assert square.trail == []
+
+
+def test_square_trail_keeps_last_positions() -> None:
+    square = main.Square(
+        x=100,
+        y=100,
+        size=4,
+        color=(255, 0, 0),
+        vx=1.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=10.0,
+    )
+
+    for _ in range(main.TRAILS_LENGTH + 5):
+        main.update_square(
+            square,
+            [square],
+            global_speed=1.0,
+            dt_seconds=1 / main.FPS,
+            rng=NoJitterRandom(),
+        )
+
+    assert len(square.trail) == main.TRAILS_LENGTH
+    assert math.isclose(square.trail[-1][0], square.center_x(), abs_tol=1e-6)
+    assert math.isclose(square.trail[-1][1], square.center_y(), abs_tol=1e-6)
 
 
 def test_apply_flee_behavior_turns_small_square_away_from_bigger_one() -> None:
