@@ -53,7 +53,12 @@ class Boid:
 
     # TODO: Implement speed clamping to ensure boids don't exceed max speed
     def _clampSpeed(self) -> None:
-        pass
+        speed: float = math.hypot(self.vx, self.vy)
+
+        if speed > config.BOID_SPEED_MAX:
+            scale: float = config.BOID_SPEED_MAX / speed
+            self.vx *= scale
+            self.vy *= scale
 
     # TODO: Implement Screen Wrapping
     # Screen wrapping: if a boid goes off one edge of the screen, 
@@ -102,6 +107,20 @@ class Boid:
     # Then sum these vectors to get the overall separation steering force.
     def _separation(self, boids: List['Boid']) -> pygame.Vector2:
         steer : pygame.Vector2 = pygame.Vector2(0, 0)
+
+        for other in boids:
+            if other is self:
+                continue
+
+            difference: pygame.Vector2 = pygame.Vector2(
+                self.x - other.x,
+                self.y - other.y,
+            )
+            distance: float = difference.length()
+
+            if 0 < distance < config.SEPARATION_DISTANCE:
+                steer += difference.normalize() / distance
+
         return steer
 
     # Alignment: steer toward the average direction of nearby boids: 
@@ -137,6 +156,13 @@ class Boid:
         # using the defined strengths (*_STEER_STRENGTH) for each behavior.
 
         self._random_steer()
+
+        if config.SEPARATION_ON:
+            separation: pygame.Vector2 = self._separation(boids)
+            self.vx += separation.x * config.SEPARATION_STEER_STRENGTH * dt_seconds
+            self.vy += separation.y * config.SEPARATION_STEER_STRENGTH * dt_seconds
+
+        self._clampSpeed()
 
         # Update the boid's position based on its velocity.
         self.x += self.vx * dt_seconds
