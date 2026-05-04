@@ -22,6 +22,8 @@ SQUARE_COUNT = 45
 NUM_SQUARES = SQUARE_COUNT
 MIN_SIZE = 10
 MAX_SIZE = 40
+MAX_SQUARE_SIZE = 80
+GROWTH_FACTOR = 0.25
 MAX_SPEED = 6.0
 MIN_SPEED = 1.5
 GLOBAL_MAX_SPEED = MAX_SPEED
@@ -234,6 +236,15 @@ def respawn_square(state: GameState, square_index: int) -> None:
     )
 
 
+def grow_predator(predator: Square, prey: Square) -> None:
+    growth_amount = max(1, int(prey.size * GROWTH_FACTOR))
+    # The max size keeps a predator from growing until it fills the screen.
+    predator.size = min(MAX_SQUARE_SIZE, predator.size + growth_amount)
+    predator.max_speed = compute_square_max_speed(predator.size)
+    clamp_velocity_to_max_speed(predator)
+    predator.update_rect()
+
+
 def handle_collisions(state: GameState) -> None:
     eaten_indexes: set[int] = set()
 
@@ -255,8 +266,10 @@ def handle_collisions(state: GameState) -> None:
                 continue
 
             if first_square.size > second_square.size:
+                grow_predator(first_square, second_square)
                 eaten_index = second_index
             else:
+                grow_predator(second_square, first_square)
                 eaten_index = first_index
 
             respawn_square(state, eaten_index)

@@ -122,10 +122,51 @@ def test_bigger_square_eats_smaller_square_on_collision() -> None:
     main.handle_collisions(state)
 
     assert state.squares[0] is bigger_square
-    assert state.squares[0].size == 25
+    assert state.squares[0].size == 26
+    assert state.squares[0].original_size == 25
+    assert state.squares[0].rect.size == (26, 26)
     assert state.squares[1] is not smaller_square
     assert state.squares[1].size == 10
     assert state.squares[1].original_size == 10
+
+
+def test_predator_growth_is_limited_by_max_size() -> None:
+    predator = main.Square(
+        x=10,
+        y=10,
+        size=79,
+        color=(255, 0, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+        original_size=25,
+    )
+    prey = main.Square(
+        x=20,
+        y=20,
+        size=25,
+        color=(0, 255, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+    )
+    state = main.GameState(
+        squares=[predator, prey],
+        rng=main.random.Random(5),
+    )
+
+    main.handle_collisions(state)
+
+    assert state.squares[0].size == main.MAX_SQUARE_SIZE
+    assert state.squares[0].rect.size == (
+        main.MAX_SQUARE_SIZE,
+        main.MAX_SQUARE_SIZE,
+    )
+    assert state.squares[0].original_size == 25
 
 
 def test_same_size_squares_do_not_eat_each_other() -> None:
