@@ -24,9 +24,9 @@ class Config:
     SEPARATION_STEER_STRENGTH: float = 5 # How strongly boids steer away from neighbors (vector-based)
 
     # Alignment is the behavior where boids steer toward the average direction of nearby boids
-    ALIGNEMENT_ON: bool = False  # Toggle alignment behavior on/off
+    ALIGNMENT_ON: bool = False  # Toggle alignment behavior on/off
     ALIGNMENT_DISTANCE: int = BOID_SIZE * 100  # Distance within which to consider neighbors for alignment
-    ALIGNEMENT_STEER_STRENGTH: float = .8  # How strongly boids steer toward average direction of neighbors (vector-based)
+    ALIGNMENT_STEER_STRENGTH: float = .8  # How strongly boids steer toward average direction of neighbors (vector-based)
 
     # Cohesion is the behavior where boids steer toward the average position of nearby boids
     COHESION_ON: bool = False  # Toggle cohesion behavior on/off
@@ -130,6 +130,23 @@ class Boid:
     # and subtract the current boid's velocity to get the alignment steering force.
     def _alignment(self, boids: List['Boid']) -> pygame.Vector2:
         steer : pygame.Vector2 = pygame.Vector2(0, 0)
+
+        nearby_count: int = 0
+
+        for other in boids:
+            if other is self:
+                continue
+
+            distance: float = math.hypot(self.x - other.x, self.y - other.y)
+
+            if 0 < distance < config.ALIGNMENT_DISTANCE:
+                steer += pygame.Vector2(other.vx, other.vy)
+                nearby_count += 1
+
+        if nearby_count > 0:
+            average_velocity: pygame.Vector2 = steer / nearby_count
+            steer = average_velocity - pygame.Vector2(self.vx, self.vy)
+
         return steer
     
     # Cohesion: steer toward the average position of nearby boids: 
@@ -162,6 +179,11 @@ class Boid:
             self.vx += separation.x * config.SEPARATION_STEER_STRENGTH * dt_seconds
             self.vy += separation.y * config.SEPARATION_STEER_STRENGTH * dt_seconds
 
+        if config.ALIGNMENT_ON:
+            alignment: pygame.Vector2 = self._alignment(boids)
+            self.vx += alignment.x * config.ALIGNMENT_STEER_STRENGTH * dt_seconds
+            self.vy += alignment.y * config.ALIGNMENT_STEER_STRENGTH * dt_seconds
+
         self._clampSpeed()
 
         # Update the boid's position based on its velocity.
@@ -192,7 +214,7 @@ def draw_hud(screen: pygame.Surface, font: pygame.font.Font, config: Config, fps
     text: str = f"Separation: {'ON' if config.SEPARATION_ON else 'OFF'} - Press 'S' to toggle"
     img = font.render(text, True, (255, 255, 255))
     screen.blit(img, (10, 25))
-    text: str = f"Alignment: {'ON' if config.ALIGNEMENT_ON else 'OFF'} - Press 'A' to toggle"
+    text: str = f"Alignment: {'ON' if config.ALIGNMENT_ON else 'OFF'} - Press 'A' to toggle"
     img = font.render(text, True, (255, 255, 255))
     screen.blit(img, (10, 40))
     text: str = f"Cohesion: {'ON' if config.COHESION_ON else 'OFF'} - Press 'C' to toggle"
@@ -234,7 +256,7 @@ def run_simulation() -> None:
                 if event.key == pygame.K_s:
                     config.SEPARATION_ON = not config.SEPARATION_ON
                 if event.key == pygame.K_a:
-                    config.ALIGNEMENT_ON = not config.ALIGNEMENT_ON
+                    config.ALIGNMENT_ON = not config.ALIGNMENT_ON
                 if event.key == pygame.K_c:
                     config.COHESION_ON = not config.COHESION_ON
 
