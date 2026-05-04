@@ -24,6 +24,7 @@ MIN_SIZE = 10
 MAX_SIZE = 40
 MAX_SQUARE_SIZE = 80
 GROWTH_FACTOR = 0.25
+GROWTH_SPEED = 500
 TRAILS_LENGTH = 30
 TEST_MODE_ON = False
 MAX_SPEED = 6.0
@@ -64,6 +65,9 @@ class Square:
     age: float = 0.0
     original_size: int | None = None
     trail: list[tuple[float, float]] = field(default_factory=list)
+    growth_start_time: int | None = None
+    growth_initial_size: int | None = None
+    growth_target_size: int | None = None
     rect: pygame.Rect = field(init=False)
 
     def __post_init__(self) -> None:
@@ -216,6 +220,7 @@ def update_square(
     dt_seconds: float,
     rng: RandomLike = random,
 ) -> None:
+    update_growth_animation(square)
     apply_random_direction_jitter(square, dt_seconds, rng)
     apply_flee_behavior(square, squares, dt_seconds)
     clamp_velocity_to_max_speed(square)
@@ -264,12 +269,43 @@ def respawn_square(state: GameState, square_index: int) -> None:
 
 
 def grow_predator(predator: Square, prey: Square) -> None:
+    update_growth_animation(predator)
     growth_amount = max(1, int(prey.size * GROWTH_FACTOR))
     # The max size keeps a predator from growing until it fills the screen.
-    predator.size = min(MAX_SQUARE_SIZE, predator.size + growth_amount)
-    predator.max_speed = compute_square_max_speed(predator.size)
-    clamp_velocity_to_max_speed(predator)
-    predator.update_rect()
+    current_target = predator.growth_target_size or predator.size
+    target_size = min(MAX_SQUARE_SIZE, current_target + growth_amount)
+
+    if target_size <= predator.size:
+        return
+
+    predator.growth_start_time = pygame.time.get_ticks()
+    predator.growth_initial_size = predator.size
+    predator.growth_target_size = target_size
+
+
+def update_growth_animation(square: Square) -> None:
+    if square.growth_start_time is None:
+        return
+
+    if square.growth_initial_size is None or square.growth_target_size is None:
+        return
+
+    elapsed = pygame.time.get_ticks() - square.growth_start_time
+    progress = min(1.0, elapsed / GROWTH_SPEED)
+    size_range = square.growth_target_size - square.growth_initial_size
+    square.size = int(round(square.growth_initial_size + size_range * progress))
+    square.max_speed = compute_square_max_speed(square.size)
+    clamp_velocity_to_max_speed(square)
+    square.update_rect()
+
+    if progress >= 1.0:
+        square.size = square.growth_target_size
+        square.growth_start_time = None
+        square.growth_initial_size = None
+        square.growth_target_size = None
+        square.max_speed = compute_square_max_speed(square.size)
+        clamp_velocity_to_max_speed(square)
+        square.update_rect()
 
 
 def handle_collisions(state: GameState) -> None:
