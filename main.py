@@ -25,6 +25,7 @@ MAX_SIZE = 40
 MAX_SQUARE_SIZE = 80
 GROWTH_FACTOR = 0.25
 TRAILS_LENGTH = 30
+TEST_MODE_ON = False
 MAX_SPEED = 6.0
 MIN_SPEED = 1.5
 GLOBAL_MAX_SPEED = MAX_SPEED
@@ -41,6 +42,11 @@ MAX_ROTATION_SPEED = 180.0
 
 class RandomLike(Protocol):
     def uniform(self, minimum: float, maximum: float) -> float: ...
+
+
+class NoJitterRandom:
+    def uniform(self, minimum: float, maximum: float) -> float:
+        return 0.0
 
 
 @dataclass
@@ -386,6 +392,50 @@ def draw_scene(
     screen.blit(speed_text, (10, 36))
 
 
+def run_speed_test() -> bool:
+    start_x = 100.0
+    start_y = 100.0
+    velocity_x = 50.0
+    velocity_y = 0.0
+    dt_seconds = 1 / FPS
+
+    square = Square(
+        x=start_x,
+        y=start_y,
+        size=10,
+        color=(255, 0, 0),
+        vx=velocity_x,
+        vy=velocity_y,
+        angle=0.0,
+        rotation_speed=0.0,
+        max_speed=1000.0,
+    )
+
+    expected_x = start_x + velocity_x * dt_seconds * FPS
+    expected_y = start_y + velocity_y * dt_seconds * FPS
+
+    update_square(
+        square,
+        [square],
+        global_speed=1.0,
+        dt_seconds=dt_seconds,
+        rng=NoJitterRandom(),
+    )
+
+    test_passed = math.isclose(square.x, expected_x, abs_tol=1e-6) and math.isclose(
+        square.y,
+        expected_y,
+        abs_tol=1e-6,
+    )
+
+    if test_passed:
+        print("PASS")
+    else:
+        print(f"FAIL expected ({expected_x}, {expected_y}) but got ({square.x}, {square.y})")
+
+    return test_passed
+
+
 def main() -> None:
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -405,4 +455,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if TEST_MODE_ON:
+        run_speed_test()
+    else:
+        main()

@@ -291,6 +291,13 @@ def test_square_trail_keeps_last_positions() -> None:
     assert math.isclose(square.trail[-1][1], square.center_y(), abs_tol=1e-6)
 
 
+def test_run_speed_test_prints_pass(capsys) -> None:
+    assert main.run_speed_test() is True
+
+    output = capsys.readouterr()
+    assert "PASS" in output.out
+
+
 def test_apply_flee_behavior_turns_small_square_away_from_bigger_one() -> None:
     small_square = main.Square(
         x=100,
