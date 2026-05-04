@@ -1,0 +1,457 @@
+<!-- STUDY_TOOL_TEMPLATE_VERSION: 2.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab8-Pygame Study Tool</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --text: #212529;
+            --accent: #007bff;
+            --muted: #6c757d;
+            --radius: 8px;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        * {
+            box-sizing: border-box;
+            font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--bg) 0%, #e9ecef 100%);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .section {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        h1, h2 {
+            margin-top: 0;
+            color: var(--accent);
+        }
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #flashcard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .flashcard {
+            perspective: 1000px;
+            height: 200px;
+            cursor: pointer;
+        }
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flashcard.is-flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+        }
+        .flashcard-front {
+            background: var(--surface);
+        }
+        .flashcard-back {
+            background: var(--muted);
+            color: white;
+            transform: rotateY(180deg);
+        }
+        #quiz-content {
+            margin-bottom: 20px;
+        }
+        .quiz-question {
+            margin-bottom: 20px;
+        }
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .quiz-option {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .quiz-option:hover {
+            background: #f0f0f0;
+        }
+        .quiz-option.selected {
+            background: var(--accent);
+            color: white;
+        }
+        .quiz-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        #quiz-results {
+            display: none;
+        }
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: var(--radius);
+            background: #f8f9fa;
+        }
+        .correct {
+            border-left: 5px solid green;
+        }
+        .incorrect {
+            border-left: 5px solid red;
+        }
+        @media (max-width: 600px) {
+            #flashcard-grid {
+                grid-template-columns: 1fr;
+            }
+            .quiz-nav {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main id="app">
+        <section id="study-summary" class="section">
+            <h1>Lab8-Pygame Study Summary</h1>
+            <p>This project is a Pygame simulation featuring 100 colorful squares that move autonomously on a black screen. Each square has unique properties like size, color, speed, and direction. Key features include size-based maximum speeds (bigger squares move slower), random direction jitter for natural movement, flee behavior where smaller squares avoid larger ones, chase behavior where larger squares pursue smaller ones, and bounce collision detection with screen edges. The game uses time-based animation, event handling for controls, and a main loop for updating and rendering.</p>
+            <p>Technical themes: Object-oriented design with a Square class, vector mathematics for movement and forces, collision detection, time-based updates, and Pygame's event and rendering systems.</p>
+        </section>
+        <section id="mode-switcher" class="section">
+            <h2>Study Modes</h2>
+            <button onclick="showFlashcards()">Flashcards</button>
+            <button onclick="showQuiz()">Quiz</button>
+        </section>
+
+        <section id="flashcards" class="section">
+            <h2>Flashcards</h2>
+            <div id="flashcard-grid"></div>
+        </section>
+
+        <section id="quiz" class="section">
+            <h2>Quiz</h2>
+            <div id="quiz-content"></div>
+            <div class="quiz-nav">
+                <button id="prev-btn" onclick="prevQuestion()" disabled>Previous</button>
+                <button id="next-btn" onclick="nextQuestion()">Next</button>
+                <button id="submit-btn" onclick="submitQuiz()" style="display:none;">Submit</button>
+            </div>
+            <div id="quiz-results"></div>
+        </section>
+    </main>
+
+    <script>
+        const flashcards = [
+            {
+                front: "What is the main goal of the game?",
+                back: "To display 100 colorful squares moving around a black window with autonomous behaviors like fleeing and chasing based on size."
+            },
+            {
+                front: "How do squares move in the game?",
+                back: "Squares move using time-based animation with dx and dy velocities, updated by dt * FPS each frame. They have size-based max speeds and random direction jitter."
+            },
+            {
+                front: "What is the role of bigger squares in the game?",
+                back: "Bigger squares act as 'enemies' or obstacles for smaller squares, which flee from them. Bigger squares also chase smaller ones."
+            },
+            {
+                front: "Describe the main Pygame loop.",
+                back: "The loop handles events, fills the screen, updates each square's age and position, draws squares and FPS, then flips the display."
+            },
+            {
+                front: "How does collision detection work?",
+                back: "Squares bounce off screen edges by reversing dx or dy when hitting boundaries and repositioning to stay within bounds."
+            },
+            {
+                front: "What are the win/loss conditions?",
+                back: "There are no traditional win/loss; squares have life spans and respawn when they expire, simulating a continuous simulation."
+            },
+            {
+                front: "What does the Square.__init__ method do?",
+                back: "Initializes size, position, max_speed (based on size), velocity (dx, dy), color, and life_span for each square."
+            },
+            {
+                front: "Explain the apply_jitter method.",
+                back: "Adds random angle jitter to the square's direction vector, keeping the same speed, to make movement feel more alive."
+            },
+            {
+                front: "What is the purpose of the flee method?",
+                back: "For smaller squares, it calculates a flee force away from nearby bigger squares within FLEE_DISTANCE."
+            },
+            {
+                front: "How does the move method work?",
+                back: "Applies jitter, flee, chase, limits speed, then updates position with time-based movement and handles edge bouncing."
+            }
+        ];
+
+        const quizData = [
+            {
+                question: "What is the primary goal of the lab8-pygame project?",
+                options: ["To create a player-controlled game", "To simulate autonomous moving squares with behaviors", "To teach Pygame basics", "To display static graphics"],
+                correct: 1,
+                explanation: "The project simulates 100 squares moving with flee/chase behaviors, as described in README.md."
+            },
+            {
+                question: "How does player movement work in the game?",
+                options: ["Players control a square with arrow keys", "Squares move autonomously based on size and behaviors", "Players click to move squares", "Movement is randomized only"],
+                correct: 1,
+                explanation: "Squares move autonomously; player controls are for pausing, speeding, and resetting, not direct movement."
+            },
+            {
+                question: "What role do bigger squares play as enemies or obstacles?",
+                options: ["They block smaller squares", "Smaller squares flee from them, and they chase smaller ones", "They disappear when touched", "They have no interaction"],
+                correct: 1,
+                explanation: "In main.py, flee() makes small squares avoid big ones, and chase() makes big ones pursue small ones."
+            },
+            {
+                question: "Describe the main Pygame loop in main.py.",
+                options: ["Infinite loop handling events, updating, drawing", "Loop that runs for 60 seconds", "Loop that stops after 100 frames", "No loop, single frame"],
+                correct: 0,
+                explanation: "The while running loop in main() handles events, updates squares, draws, and flips display."
+            },
+            {
+                question: "How is collision detection implemented?",
+                options: ["Using Pygame's built-in collision system", "By checking position against screen edges and reversing velocity", "With distance calculations between squares", "No collision detection"],
+                correct: 1,
+                explanation: "In move(), if x <=0 or x+size >=WIDTH, reverse dx and reposition."
+            },
+            {
+                question: "What are the scoring or win/loss conditions?",
+                options: ["Score based on squares collected", "No scoring; squares respawn after life span expires", "Win by surviving longest", "Lose when squares collide"],
+                correct: 1,
+                explanation: "Squares have life_span and age; when age >= life_span, they respawn as new Square()."
+            },
+            {
+                question: "What does the Square class's __init__ method initialize?",
+                options: ["Only position and size", "Size, position, max_speed, velocity, color, life_span", "Only color and rotation", "Nothing, it's empty"],
+                correct: 1,
+                explanation: "See Square.__init__ in main.py: sets size, x/y, max_speed, dx/dy, color, life_span."
+            },
+            {
+                question: "What is the purpose of apply_jitter in the Square class?",
+                options: ["To change size randomly", "To add random direction changes while keeping speed", "To increase speed over time", "To stop movement"],
+                correct: 1,
+                explanation: "apply_jitter rotates the direction vector by a small random angle, preserving speed."
+            },
+            {
+                question: "How does the flee method affect smaller squares?",
+                options: ["Makes them move towards bigger squares", "Adds force away from nearby bigger squares", "Ignores bigger squares", "Makes them disappear"],
+                correct: 1,
+                explanation: "In flee(), for other.size > self.size, adds dx/dy away from other's center."
+            },
+            {
+                question: "What happens in the move method after applying behaviors?",
+                options: ["Squares teleport randomly", "Update position with dt, then bounce off edges", "Squares stop moving", "Only jitter is applied"],
+                correct: 1,
+                explanation: "After behaviors, self.x += self.dx * dt * FPS, then check edges and reverse if needed."
+            },
+            {
+                question: "Why do bigger squares move slower?",
+                options: ["They have lower max_speed based on size", "Random chance", "They age faster", "No reason, same speed"],
+                correct: 0,
+                explanation: "max_speed = GLOBAL_MAX_SPEED * (MIN_SIZE / self.size), so larger size means smaller max_speed."
+            },
+            {
+                question: "What controls the randomness in movement?",
+                options: ["Only initial direction", "Initial direction and continuous jitter", "Only flee/chase forces", "No randomness"],
+                correct: 1,
+                explanation: "Initial random angle/speed, plus apply_jitter each move for ongoing randomness."
+            },
+            {
+                question: "How is time-based animation achieved?",
+                options: ["Using fixed frame rates", "dt = clock.tick(FPS) / 1000.0, multiply velocities by dt * FPS", "Ignoring time", "Using sleep"],
+                correct: 1,
+                explanation: "dt from clock.tick, then x += dx * dt * FPS in move()."
+            },
+            {
+                question: "What does the draw method do?",
+                options: ["Updates position", "Draws a rect with square's color and position", "Applies jitter", "Handles events"],
+                correct: 1,
+                explanation: "pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), self.size, self.size))"
+            },
+            {
+                question: "What is the Big-O complexity of the move method per square?",
+                options: ["O(1)", "O(N) where N is number of squares", "O(log N)", "O(N^2)"],
+                correct: 1,
+                explanation: "flee and chase loop over all other squares, so O(N) per square, total O(N^2)."
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+        let quizMode = false;
+
+        function showFlashcards() {
+            document.getElementById('flashcards').style.display = 'block';
+            document.getElementById('quiz').style.display = 'none';
+            renderFlashcards();
+        }
+
+        function showQuiz() {
+            document.getElementById('flashcards').style.display = 'none';
+            document.getElementById('quiz').style.display = 'block';
+            quizMode = true;
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            renderQuiz();
+        }
+
+        function renderFlashcards() {
+            const grid = document.getElementById('flashcard-grid');
+            grid.innerHTML = '';
+            flashcards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'flashcard';
+                cardEl.innerHTML = `
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">${card.front}</div>
+                        <div class="flashcard-back">${card.back}</div>
+                    </div>
+                `;
+                cardEl.addEventListener('click', () => cardEl.classList.toggle('is-flipped'));
+                cardEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        cardEl.classList.toggle('is-flipped');
+                    }
+                });
+                cardEl.tabIndex = 0;
+                grid.appendChild(cardEl);
+            });
+        }
+
+        function renderQuiz() {
+            const content = document.getElementById('quiz-content');
+            const question = quizData[currentQuestionIndex];
+            content.innerHTML = `
+                <div class="quiz-question">
+                    <h3>Question ${currentQuestionIndex + 1} of ${quizData.length}</h3>
+                    <p>${question.question}</p>
+                    <div class="quiz-options">
+                        ${question.options.map((opt, i) => `
+                            <div class="quiz-option" data-index="${i}" onclick="selectOption(${i})">${opt}</div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            updateNav();
+        }
+
+        function selectOption(index) {
+            document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`.quiz-option[data-index="${index}"]`).classList.add('selected');
+            userAnswers[currentQuestionIndex] = index;
+        }
+
+        function updateNav() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            prevBtn.disabled = currentQuestionIndex === 0;
+            if (currentQuestionIndex === quizData.length - 1) {
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'inline-block';
+            } else {
+                nextBtn.style.display = 'inline-block';
+                submitBtn.style.display = 'none';
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < quizData.length - 1) {
+                currentQuestionIndex++;
+                renderQuiz();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuiz();
+            }
+        }
+
+        function submitQuiz() {
+            const results = document.getElementById('quiz-results');
+            const content = document.getElementById('quiz-content');
+            content.style.display = 'none';
+            document.querySelector('.quiz-nav').style.display = 'none';
+            results.style.display = 'block';
+            let score = 0;
+            const resultHtml = quizData.map((q, i) => {
+                const userAns = userAnswers[i];
+                const correct = userAns === q.correct;
+                if (correct) score++;
+                return `
+                    <div class="result-item ${correct ? 'correct' : 'incorrect'}">
+                        <p><strong>Q${i+1}:</strong> ${q.question}</p>
+                        <p>Your answer: ${userAns !== undefined ? q.options[userAns] : 'Not answered'}</p>
+                        <p>Correct: ${q.options[q.correct]}</p>
+                        <p>${q.explanation}</p>
+                    </div>
+                `;
+            }).join('');
+            results.innerHTML = `<h3>Results: ${score}/${quizData.length}</h3>${resultHtml}`;
+        }
+
+        // Runtime validation
+        function validateDOM() {
+            const required = ['quiz-content', 'quiz-nav', 'quiz-results'];
+            required.forEach(id => {
+                if (!document.getElementById(id)) {
+                    console.error(`Missing required element: #${id}`);
+                }
+            });
+            const flashcards = document.querySelectorAll('.flashcard');
+            flashcards.forEach((card, i) => {
+                if (!card.querySelector('.flashcard-front') || !card.querySelector('.flashcard-back')) {
+                    console.error(`Flashcard ${i} missing front or back`);
+                }
+            });
+        }
+
+        // Initialize
+        showFlashcards();
+        validateDOM();
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">c:\AI4SE\lab8-pygame\docs\study_tool.html
