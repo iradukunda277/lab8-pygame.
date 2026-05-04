@@ -467,7 +467,9 @@ def run_speed_test() -> bool:
     if test_passed:
         print("PASS")
     else:
-        print(f"FAIL expected ({expected_x}, {expected_y}) but got ({square.x}, {square.y})")
+        print(
+            f"FAIL expected ({expected_x}, {expected_y}) but got ({square.x}, {square.y})"
+        )
 
     return test_passed
 
