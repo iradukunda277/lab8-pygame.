@@ -33,6 +33,7 @@ ENV/
 # Python tooling caches
 .mypy_cache/
 .pytest_cache/
+pytest-cache-files-*/
 .ruff_cache/
 .pyre/
 .hypothesis/

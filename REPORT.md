@@ -6,7 +6,7 @@
 
 ## 2. Prompting & AI Interaction
 * **Successes:** The best prompts were concrete and constrained. Asking for one feature at a time, asking for comments, and asking for explanations of specific functions helped me keep control. Requests like "add comments", "explain the rotation", and "implement only the missing feature" worked better than broad prompts.
-* **Failures:** Broader AI-generated solutions tended to move too fast, especially when they introduced too much code at once. That made it harder to follow every design decision immediately. Another risk was adding features before checking whether they actually matched the PDF instructions.
+* **Failures:** Broader suggested solutions tended to move too fast, especially when they introduced too much code at once. That made it harder to follow every design decision immediately. Another risk was adding features before checking whether they actually matched the PDF instructions.
 * **Analysis:** These failures happened when the scope was too open or when I relied on the AI before fully checking the assignment materials. Narrower prompts, reading the PDFs carefully, and verifying each step against the assignment made the process more manageable.
 
 ## 3. Key Learnings
