@@ -17,3 +17,9 @@ For alignment, boids should move in similar directions. I would compare each boi
 For cohesion, boids should remain grouped. I would calculate the group center by averaging all boid positions, then measure each boid's distance from that center. If cohesion is working, the average distance from the center should stay reasonable or decrease because boids are moving toward the group.
 
 The test idea is to create a fixed set of boids, turn on separation, alignment, and cohesion, and run the update loop for a few seconds without drawing. The code would collect the separation, alignment, and cohesion measurements before and after the simulation. It would print PASS if the final values show better flocking behavior, otherwise it would print FAIL.
+
+## Q16 S.A.C. test implementation
+
+The S.A.C. test is an approximate test, not a perfect proof that flocking is correct. It uses a fixed group of boids, turns on separation, alignment, and cohesion, and runs the update loop without drawing. Random steering is turned off during the test so the measurements focus on S.A.C. behavior.
+
+The test measures average minimum distance for separation, average angle difference for alignment, and average distance to the group center for cohesion. It prints SAC TEST PASS if the boids are not too close, their direction becomes more similar, and they stay reasonably grouped. It prints SAC TEST FAIL if those simple checks do not pass.

@@ -36,6 +36,13 @@ class Config:
     # Wall behavior
     WALL_BEHAVIOR: str = "wrap"
 
+    RANDOM_STEER_ON: bool = True
+
+
+TEST_MODE_ON: bool = False
+SAC_TEST_FRAMES: int = 120
+SAC_TEST_DT: int = 16
+
 
 
 config = Config()
@@ -189,7 +196,8 @@ class Boid:
         # and apply the corresponding steering forces to the boid's velocity 
         # using the defined strengths (*_STEER_STRENGTH) for each behavior.
 
-        self._random_steer()
+        if config.RANDOM_STEER_ON:
+            self._random_steer()
 
         if config.SEPARATION_ON:
             separation: pygame.Vector2 = self._separation(boids)
@@ -247,6 +255,140 @@ def draw_hud(screen: pygame.Surface, font: pygame.font.Font, config: Config, fps
     screen.blit(img, (10, 70))
 
 
+def average_minimum_distance(boids: List[Boid]) -> float:
+    minimum_distances: List[float] = []
+
+    for boid in boids:
+        closest_distance: float | None = None
+
+        for other in boids:
+            if other is boid:
+                continue
+
+            distance: float = math.hypot(boid.x - other.x, boid.y - other.y)
+
+            if closest_distance is None or distance < closest_distance:
+                closest_distance = distance
+
+        if closest_distance is not None:
+            minimum_distances.append(closest_distance)
+
+    if not minimum_distances:
+        return 0.0
+
+    return sum(minimum_distances) / len(minimum_distances)
+
+
+def average_angle_difference(boids: List[Boid]) -> float:
+    angle_differences: List[float] = []
+
+    for first_index in range(len(boids)):
+        first_angle: float = math.atan2(boids[first_index].vy, boids[first_index].vx)
+
+        for second_index in range(first_index + 1, len(boids)):
+            second_angle: float = math.atan2(boids[second_index].vy, boids[second_index].vx)
+            difference: float = abs(first_angle - second_angle)
+
+            if difference > math.pi:
+                difference = 2 * math.pi - difference
+
+            angle_differences.append(difference)
+
+    if not angle_differences:
+        return 0.0
+
+    return sum(angle_differences) / len(angle_differences)
+
+
+def average_distance_to_group_center(boids: List[Boid]) -> float:
+    if not boids:
+        return 0.0
+
+    center_x: float = sum(boid.x for boid in boids) / len(boids)
+    center_y: float = sum(boid.y for boid in boids) / len(boids)
+    distances: List[float] = []
+
+    for boid in boids:
+        distances.append(math.hypot(boid.x - center_x, boid.y - center_y))
+
+    return sum(distances) / len(distances)
+
+
+def measure_sac(boids: List[Boid]) -> Tuple[float, float, float]:
+    return (
+        average_minimum_distance(boids),
+        average_angle_difference(boids),
+        average_distance_to_group_center(boids),
+    )
+
+
+def create_sac_test_boids() -> List[Boid]:
+    test_data: List[Tuple[float, float, float, float]] = [
+        (300, 300, 220, 0),
+        (500, 300, -220, 0),
+        (400, 220, 0, 220),
+        (400, 380, 0, -220),
+        (420, 310, 220, 0),
+    ]
+    boids: List[Boid] = []
+
+    for x, y, vx, vy in test_data:
+        boid = Boid()
+        boid.x = x
+        boid.y = y
+        boid.vx = vx
+        boid.vy = vy
+        boids.append(boid)
+
+    return boids
+
+
+def run_sac_test() -> bool:
+    old_separation: bool = config.SEPARATION_ON
+    old_alignment: bool = config.ALIGNMENT_ON
+    old_cohesion: bool = config.COHESION_ON
+    old_random_steer: bool = config.RANDOM_STEER_ON
+
+    config.SEPARATION_ON = True
+    config.ALIGNMENT_ON = True
+    config.COHESION_ON = True
+    config.RANDOM_STEER_ON = False
+
+    boids: List[Boid] = create_sac_test_boids()
+    before_separation, before_alignment, before_cohesion = measure_sac(boids)
+
+    for _ in range(SAC_TEST_FRAMES):
+        for boid in boids:
+            boid.update(boids, SAC_TEST_DT)
+
+    after_separation, after_alignment, after_cohesion = measure_sac(boids)
+
+    config.SEPARATION_ON = old_separation
+    config.ALIGNMENT_ON = old_alignment
+    config.COHESION_ON = old_cohesion
+    config.RANDOM_STEER_ON = old_random_steer
+
+    separation_passed: bool = after_separation >= config.BOID_SIZE * 2
+    alignment_passed: bool = after_alignment < before_alignment
+    cohesion_passed: bool = after_cohesion <= before_cohesion * 1.5
+    test_passed: bool = separation_passed and alignment_passed and cohesion_passed
+
+    print("S.A.C. measurements:")
+    print(f"Separation average minimum distance: {before_separation:.2f} -> {after_separation:.2f}")
+    print(
+        "Alignment average angle difference: "
+        f"{math.degrees(before_alignment):.2f} deg -> {math.degrees(after_alignment):.2f} deg"
+    )
+    print(f"Cohesion average distance to center: {before_cohesion:.2f} -> {after_cohesion:.2f}")
+
+    if test_passed:
+        print("SAC TEST PASS")
+    else:
+        print("SAC TEST FAIL")
+
+    return test_passed
+
+
 # Main function to run the simulation
 def run_simulation() -> None:
 
@@ -295,4 +437,7 @@ def run_simulation() -> None:
 
 # Main entry point to run the simulation
 if __name__ == "__main__":
-    run_simulation()
+    if TEST_MODE_ON:
+        run_sac_test()
+    else:
+        run_simulation()
