@@ -90,6 +90,78 @@ def test_check_collision_uses_updated_rects() -> None:
     assert main.check_collision(first_square, second_square) is True
 
 
+def test_bigger_square_eats_smaller_square_on_collision() -> None:
+    bigger_square = main.Square(
+        x=10,
+        y=10,
+        size=25,
+        color=(255, 0, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+    )
+    smaller_square = main.Square(
+        x=20,
+        y=20,
+        size=4,
+        color=(0, 255, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+        original_size=10,
+    )
+    state = main.GameState(
+        squares=[bigger_square, smaller_square],
+        rng=main.random.Random(3),
+    )
+
+    main.handle_collisions(state)
+
+    assert state.squares[0] is bigger_square
+    assert state.squares[0].size == 25
+    assert state.squares[1] is not smaller_square
+    assert state.squares[1].size == 10
+    assert state.squares[1].original_size == 10
+
+
+def test_same_size_squares_do_not_eat_each_other() -> None:
+    first_square = main.Square(
+        x=10,
+        y=10,
+        size=10,
+        color=(255, 0, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+    )
+    second_square = main.Square(
+        x=15,
+        y=15,
+        size=10,
+        color=(0, 255, 0),
+        vx=0.0,
+        vy=0.0,
+        angle=0.0,
+        rotation_speed=1.0,
+        max_speed=3.0,
+    )
+    state = main.GameState(
+        squares=[first_square, second_square],
+        rng=main.random.Random(4),
+    )
+
+    main.handle_collisions(state)
+
+    assert state.squares[0] is first_square
+    assert state.squares[1] is second_square
+
+
 def test_apply_random_direction_jitter_changes_direction_without_breaking_speed_limit() -> None:
     square = main.Square(
         x=10,

@@ -226,6 +226,46 @@ def check_collision(first_square: Square, second_square: Square) -> bool:
     return first_square.rect.colliderect(second_square.rect)
 
 
+def respawn_square(state: GameState, square_index: int) -> None:
+    old_square = state.squares[square_index]
+    state.squares[square_index] = create_random_square(
+        state.rng,
+        old_square.original_size,
+    )
+
+
+def handle_collisions(state: GameState) -> None:
+    eaten_indexes: set[int] = set()
+
+    for first_index in range(len(state.squares)):
+        if first_index in eaten_indexes:
+            continue
+
+        for second_index in range(first_index + 1, len(state.squares)):
+            if second_index in eaten_indexes:
+                continue
+
+            first_square = state.squares[first_index]
+            second_square = state.squares[second_index]
+
+            if first_square.size == second_square.size:
+                continue
+
+            if not check_collision(first_square, second_square):
+                continue
+
+            if first_square.size > second_square.size:
+                eaten_index = second_index
+            else:
+                eaten_index = first_index
+
+            respawn_square(state, eaten_index)
+            eaten_indexes.add(eaten_index)
+
+            if eaten_index == first_index:
+                break
+
+
 def update_state(state: GameState, dt_seconds: float) -> None:
     if state.paused:
         return
@@ -234,8 +274,8 @@ def update_state(state: GameState, dt_seconds: float) -> None:
         square.age += dt_seconds * state.global_speed
 
         if square.age >= square.life_span:
-            square = create_random_square(state.rng, square.original_size)
-            state.squares[index] = square
+            respawn_square(state, index)
+            square = state.squares[index]
 
         update_square(
             square,
@@ -244,6 +284,8 @@ def update_state(state: GameState, dt_seconds: float) -> None:
             dt_seconds=dt_seconds,
             rng=state.rng,
         )
+
+    handle_collisions(state)
 
 
 def handle_input(state: GameState, events: list[pygame.event.Event]) -> None:
