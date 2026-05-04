@@ -33,8 +33,8 @@ class Config:
     COHESION_DISTANCE: int = BOID_SIZE * 50  # Distance within which to consider neighbors for cohesion
     COHESION_STEER_STRENGTH: float = 5  # How strongly boids steer toward center of mass of neighbors (vector-based)
 
-    # Wall warp or bounce
-    WALL_BEHAVIOR: str = "bounce"  # "wrap" or "bounce"
+    # Wall behavior
+    WALL_BEHAVIOR: str = "wrap"
 
 
 
@@ -59,7 +59,15 @@ class Boid:
     # Screen wrapping: if a boid goes off one edge of the screen, 
     # it should reappear on the opposite edge
     def _screen_wrap(self) -> None:
-        pass
+        if self.x > config.WIDTH:
+            self.x = 0
+        elif self.x < 0:
+            self.x = config.WIDTH
+
+        if self.y > config.HEIGHT:
+            self.y = 0
+        elif self.y < 0:
+            self.y = config.HEIGHT
     
     # Default wall behavior is bounce: if a boid hits the edge of the screen, 
     # it should bounce back in the opposite direction
@@ -126,11 +134,8 @@ class Boid:
         self.x += self.vx * dt_seconds
         self.y += self.vy * dt_seconds
 
-        # Last, handle wall behavior (bounce or wrap)
-        if config.WALL_BEHAVIOR == "bounce":
-            self._screen_bounce()
-        else:   
-            self._screen_wrap()
+        # Last, wrap around the screen edges without changing velocity.
+        self._screen_wrap()
 
 
     # Draw boid as a triangle pointing in the direction of velocity
@@ -159,7 +164,7 @@ def draw_hud(screen: pygame.Surface, font: pygame.font.Font, config: Config, fps
     text: str = f"Cohesion: {'ON' if config.COHESION_ON else 'OFF'} - Press 'C' to toggle"
     img = font.render(text, True, (255, 255, 255))
     screen.blit(img, (10, 55))
-    text: str = f"Wall Behavior: {config.WALL_BEHAVIOR.capitalize()} - Press 'W' to toggle"
+    text: str = f"Wall Behavior: {config.WALL_BEHAVIOR.capitalize()}"
     img = font.render(text, True, (255, 255, 255))
     screen.blit(img, (10, 70))
 
@@ -198,8 +203,6 @@ def run_simulation() -> None:
                     config.ALIGNEMENT_ON = not config.ALIGNEMENT_ON
                 if event.key == pygame.K_c:
                     config.COHESION_ON = not config.COHESION_ON
-                if event.key == pygame.K_w:
-                    config.WALL_BEHAVIOR = "bounce" if config.WALL_BEHAVIOR == "wrap" else "wrap"
 
         # Update and draw boids in one loop
         for boid in boids:
